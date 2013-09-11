@@ -2,12 +2,11 @@
 
 import xml.etree.ElementTree as ET
 import argparse
-import sys
 
 #set up arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--output', help='Output file to write to', metavar='output')
-parser.add_argument('-s', '--ssid', action='append', default=[], \
+parser.add_argument('-s', '--ssid', action='append', default=[],
                     metavar='ssid', help='An SSID to look for, can be used more than once')
 parser.add_argument('-S', '--ssid-file', dest='ssid_file', metavar='ssid-file', help='A file with SSIDs to look for')
 parser.add_argument('file', nargs=1, help='Kismet NETXML file to parse', metavar='xml-file')
@@ -49,11 +48,14 @@ for network in root.findall('wireless-network'):
         pass
 
 if args.output:
-    outfile = open(args.output, 'w')
-    for result in results:
-        outfile.write('{0}\n'.format(result))
-    outfile.close()
-    print 'Output written to \'{0}\''.format(args.output)
+    try:
+        outfile = open(args.output, 'w')
+        for result in results:
+            outfile.write('{0}\n'.format(result))
+        outfile.close()
+        print 'Output written to \'{0}\''.format(args.output)
+    except Exception as e:
+        exit(format(e))
 else:
     for result in results:
         print result
