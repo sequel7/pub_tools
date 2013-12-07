@@ -125,7 +125,6 @@ try:
 except KeyboardInterrupt:
     cleanup(redtext + '[-]' + whitetext + ' Shutting down...')
 except Exception as e:
-    wpa_cli.sendline('remove_network {0}'.format(network_id))
     cleanup(e)
 
 #clean up so wpa_supplicant doesn't keep spraying login attempts
