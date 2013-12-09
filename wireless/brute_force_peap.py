@@ -63,7 +63,6 @@ def scramble_mac():
         subprocess.check_call(["ifconfig",interface, "hw", "ether", new_mac])
         subprocess.check_call(["ifconfig", interface, "up"])
     except:
-        print 'trying again'
         scramble_mac()
         return()
  
