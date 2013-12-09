@@ -1,5 +1,7 @@
 #!/usr/bin/env python
- 
+
+#latest version should be at https://raw.github.com/sequel7/pub_tools/master/wireless/brute_force_peap.py 
+
 import pexpect
 import argparse
 import random
