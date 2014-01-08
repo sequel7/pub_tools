@@ -71,7 +71,7 @@ os.system('tshark -c 5 -r {0} -w {1}.ssid -Y "(wlan.bssid eq {2}) and ((wlan.fc.
           '(wlan.fc.type_subtype eq 0x05)) and not (wlan_mgt.ssid eq \\"\\")" '
           '2>/dev/null'.format(read, write, bssid))
 #look for WPA1/2-PSK
-os.system('tshark -c 10 -r {0} -w {1}.psk -Y \"(wlan.bssid eq {2}) and wlan_mgt.rsn.akms.type == 2\" '
+os.system('tshark -c 10 -r {0} -w {1}.psk -Y \"(wlan.bssid eq {2}) and wlan_mgt.rsn.akms.type eq 2\" '
           '2>/dev/null'.format(read, write, bssid))
 #look for PEAP
 os.system('tshark -c 10 -r {0} -w {1}.peap -Y \"(wlan.bssid eq {2}) and eap.type eq 25\" '
