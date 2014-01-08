@@ -25,7 +25,7 @@ if ssid:
     if args.netxml:
         netxml = args.netxml
     elif os.path.exists(os.path.splitext(read)[0] + '.netxml'):
-        netxml= os.path.splitext(read)[0] + '.netxml'
+        netxml = os.path.splitext(read)[0] + '.netxml'
     elif os.path.exists(os.path.splitext(read)[0] + '.kismet.netxml'):
         netxml = os.path.splitext(read)[0] + '.kismet.netxml'
     else:
