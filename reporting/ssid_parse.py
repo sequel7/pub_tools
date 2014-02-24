@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as et
 import argparse
 
 #set up arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('-o', '--output', help='Output file to write to', metavar='output')
 parser.add_argument('-s', '--ssid', action='append', default=[],
                     metavar='ssid', help='An SSID to look for, can be used more than once')
 parser.add_argument('-S', '--ssid-file', dest='ssid_file', metavar='ssid-file', help='A file with SSIDs to look for')
-parser.add_argument('file', nargs=1, help='Kismet NETXML file to parse', metavar='xml-file')
+parser.add_argument("--hidden", help="show undiscovered hidden SSIDs", action="store_true")
+parser.add_argument('netxml', nargs='+', help='Kismet netxml file to parse', metavar='netxml')
 args = parser.parse_args()
-results = []
+show_hidden = args.hidden
+results = {}
 
 #build the list of requested SSIDs
 ssid_list = []
@@ -26,36 +27,46 @@ if args.ssid_file:
     except Exception as e:
         exit(format(e))
 
-#try to read and parse input XML file
-try:
-    tree = ET.parse(args.file[0])
-except Exception as e:
-    exit(format(e))
-
-#do work, son
-root = tree.getroot()
-
-for network in root.findall('wireless-network'):
-    try: #cause parsing fails sometimes
-        bssid = network.find('BSSID').text
-        for ssid in network.findall('SSID'):
-            if ssid.find('essid').text is not None:
-                #if we didn't ask for this SSID or have only seen one packet from it, don't bother
-                if (not ssid_list and int(ssid.find('packets').text) > 1) \
-                    or ssid.find('essid').text in ssid_list:
-                    results.append('{0}\t{1}'.format(bssid,ssid.find('essid').text.encode("utf8")))
-    except:
-        pass
-
-if args.output:
+def parse_xml(netxml):
+    #try to read and parse input XML file
     try:
-        outfile = open(args.output, 'w')
-        for result in results:
-            outfile.write('{0}\n'.format(result))
-        outfile.close()
-        print 'Output written to \'{0}\''.format(args.output)
+        tree = et.parse(netxml)
     except Exception as e:
         exit(format(e))
-else:
-    for result in results:
-        print result
+
+    #do work, son
+    root = tree.getroot()
+
+    for network in root.findall('wireless-network'):
+        try:  # cause parsing fails sometimes
+            bssid = network.find('BSSID').text
+            for ssid in network.findall('SSID'):
+                info = ssid.findtext('info', '')
+                ssid_text = ssid.find('essid').text
+                if ssid_text:  # sometimes ssid is "\" for no good reason
+                    ssid_is_slash = ord(list(ssid_text)[0]) == 92 and len(ssid_text) == 1
+                else:
+                    ssid_is_slash = False
+                if show_hidden and (ssid_text is None or ssid_is_slash):
+                    ssid_text = '<hidden>'
+                if ssid_text is not None and not ssid_is_slash:
+                    #seen more than one packet, or asked for this SSID, or asked to be shown hidden SSIDs
+                    if (not ssid_list and int(ssid.find('packets').text) > 1) \
+                            or ssid_text in ssid_list \
+                            or (show_hidden and ssid_text == '<hidden>' and int(ssid.find('packets').text) > 1):
+                        if not results.has_key(bssid) or results[bssid][0] == '<hidden>':
+                            results[bssid] = [ssid_text.encode("utf8"), info]
+        except Exception as e:
+            exit(e)
+            pass
+
+for netxml in args.netxml:
+    try:
+        parse_xml(netxml)
+    except Exception as e:
+        exit('Error: File could not be parsed: {0}\r\n{1}'.format(netxml, e))
+
+
+print '{2},{0},{1}'.format('BSSID','SSID','AP')
+for result in sorted(results):
+    print '{2},{0},{1}'.format(result.lower(), results[result][0], results[result][1])
