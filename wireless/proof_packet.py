@@ -9,7 +9,7 @@ import xml.etree.ElementTree as et
 #set up arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-r', '--read', metavar='read', help='The packet dump to read', required=True)
-parser.add_argument('-w', '--write', metavar='write', help='The packet dump to read', required=True)
+parser.add_argument('-w', '--write', metavar='write', help='The packet dump to write', required=True)
 group_target = parser.add_mutually_exclusive_group(required=True)
 group_target.add_argument('-b', '--bssid', metavar='bssid', help='The BSSID to search for')
 group_target.add_argument('-s', '--ssid', metavar='ssid', help='The SSID to search for')
