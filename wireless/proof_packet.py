@@ -80,7 +80,7 @@ os.system('tshark -c 10 -r {0} -w {1}.eaptls -R \"(wlan.bssid eq {2}) and eap.ty
 os.system('tshark -c 10 -r {0} -w {1}.peap -R \"(wlan.bssid eq {2}) and eap.type eq 25\" '
           '2>/dev/null'.format(read, write, bssid))
 #look for open network
-os.system('tshark -c 10 -r {0} -w {1}.openauth -Y \"(wlan.bssid eq {2}) and ((wlan.fc.type_subtype eq 0x08) or '
+os.system('tshark -c 10 -r {0} -w {1}.openauth -R \"(wlan.bssid eq {2}) and ((wlan.fc.type_subtype eq 0x08) or '
           '(wlan.fc.type_subtype eq 0x05)) and not (wlan_mgt.tag.number eq 48)\" '
           '2>/dev/null'.format(read, write, bssid))
 
